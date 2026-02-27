@@ -1,0 +1,121 @@
+
+# =========================
+# OS / Editor / IDE
+# =========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+.idea/
+.vscode/
+.history/
+
+*.swp
+*.swo
+*~
+
+# Cursor local workspace files (safe to ignore)
+.cursor/
+
+# =========================
+# Logs / temp files
+# =========================
+*.log
+logs/
+tmp/
+temp/
+
+# =========================
+# Secrets / environment
+# =========================
+.env
+.env.*
+!.env.example
+
+# Common secret/key patterns
+*.pem
+*.key
+*.p12
+*.pfx
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.coverage
+coverage.xml
+htmlcov/
+.hypothesis/
+
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Type checker / tooling
+.pytype/
+.tox/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# =========================
+# Python web frameworks / servers
+# =========================
+# Uvicorn/Gunicorn etc. sometimes create pid files
+*.pid
+
+# =========================
+# Database / local persistence
+# =========================
+*.sqlite
+*.sqlite3
+*.db
+
+# Common local data dirs (keeps repos clean if you persist vectors/db locally)
+data/
+storage/
+chroma/
+chromadb/
+
+# =========================
+# Node / frontend tooling (if present)
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+.next/
+.nuxt/
+dist/
+build/
+
+# =========================
+# Lean / Lake (lean_project)
+# =========================
+.lake/
+lake-packages/
+lean_packages/
+build/
+
+# =========================
+# Test outputs
+# =========================
+test-results/
+playwright-report/
+
