@@ -1,7 +1,8 @@
-"""NetworkX knowledge graph — built from persisted SQLite relationships.
+"""NetworkX knowledge graph — built on demand from persisted SQLite relationships.
 
 Nodes represent Concepts. Edges represent ConceptRelationships.
-The graph is reconstructed from SQLite at startup and updated incrementally.
+The graph is reconstructed from SQLite each time ``build_graph()`` is called;
+there is no shared in-memory graph instance.
 
 Key operations:
 - Impact analysis: what concepts are affected when a discovery modifies a base concept
@@ -87,7 +88,6 @@ def get_dependencies(
     """Return all concepts that `concept_id` transitively depends on."""
     if concept_id not in G:
         return []
-    # Reverse edges — follow depends_on edges backward
     dep_edges = [
         (u, v) for u, v, d in G.in_edges(concept_id, data=True)
         if d.get("relationship_type") == "depends_on"
@@ -123,24 +123,3 @@ def find_potential_conflicts(
         if data.get("relationship_type") == "contradicts":
             conflicts.append(source)
     return list(set(conflicts))
-
-
-def add_concept_node(G: nx.DiGraph, concept_id: str, attrs: dict) -> None:
-    G.add_node(concept_id, **attrs)
-
-
-def add_relationship_edge(
-    G: nx.DiGraph,
-    source_id: str,
-    target_id: str,
-    relationship_type: str,
-    weight: float = 1.0,
-    description: str | None = None,
-) -> None:
-    G.add_edge(
-        source_id,
-        target_id,
-        relationship_type=relationship_type,
-        weight=weight,
-        description=description,
-    )

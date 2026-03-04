@@ -40,7 +40,7 @@ class Paper(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     source_type: Mapped[str] = mapped_column(
-        Enum("arxiv", "scholar", "wolfram", "mathworld", "dlmf", "other", name="source_type_enum"),
+        Enum("arxiv", "scholar", "wolfram", "mathworld", "dlmf", "other", "upload", name="source_type_enum"),
         nullable=False,
     )
     arxiv_id: Mapped[Optional[str]] = mapped_column(String(64), unique=True, nullable=True)
@@ -69,6 +69,7 @@ class Concept(Base):
         Enum(
             "theorem", "definition", "lemma", "axiom",
             "conjecture", "corollary", "proposition",
+            "equation", "remark", "example", "formula",
             name="concept_type_enum",
         ),
         nullable=False,
@@ -127,6 +128,7 @@ RELATIONSHIP_TYPES = (
     "cited_by",
     "equivalent_to",
     "extends",
+    "related_to",
 )
 
 

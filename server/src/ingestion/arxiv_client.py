@@ -73,17 +73,72 @@ def fetch_by_id(arxiv_id: str) -> ArxivPaperMeta | None:
 
 
 def fetch_content_transiently(arxiv_id: str) -> str | None:
-    """Fetch the ar5iv HTML (structured HTML version of arXiv papers) for a paper.
+    """Fetch the ar5iv HTML for a paper and convert it to LaTeX-friendly plain text.
 
-    Returns raw text content for transient use — caller must not persist full content.
-    Uses ar5iv.org which provides structured, LaTeX-parsed HTML.
+    ar5iv.org renders arXiv LaTeX papers as HTML.  Math is stored in
+    ``<math alttext="...">`` elements.  We extract those alttext values
+    (which ARE raw LaTeX) and reconstruct theorem/definition blocks from
+    the ar5iv CSS classes so the downstream chunker can find
+    ``\\begin{theorem}…\\end{theorem}`` patterns.
+
+    Returns plain text with inline LaTeX ($...$) for transient use.
     """
+    import re
+
     import httpx
 
-    url = f"https://ar5iv.org/abs/{arxiv_id}"
+    # ar5iv requires the bare ID without a version suffix
+    clean_id = re.sub(r"v\d+$", "", arxiv_id)
+    url = f"https://ar5iv.org/abs/{clean_id}"
     try:
         response = httpx.get(url, timeout=30, follow_redirects=True)
         response.raise_for_status()
-        return response.text  # caller extracts concepts, then discards this
     except httpx.HTTPError:
         return None
+
+    html = response.text
+
+    # 1. Replace <math alttext="LATEX">…</math> with inline $LATEX$
+    html = re.sub(
+        r"<math\b[^>]*\balttext=\"([^\"]*)\"[^>]*>.*?</math>",
+        lambda m: f" ${m.group(1)}$ ",
+        html,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
+    # Self-closing variant
+    html = re.sub(
+        r"<math\b[^>]*\balttext=\"([^\"]*)\"[^>]*/\s*>",
+        lambda m: f" ${m.group(1)}$ ",
+        html,
+        flags=re.IGNORECASE,
+    )
+
+    # 2. Reconstruct LaTeX theorem/definition/… environments from ar5iv CSS classes
+    #    ar5iv marks these with class="ltx_theorem ltx_theorem_<envname>"
+    def _wrap_env(m: re.Match) -> str:
+        env = m.group(1).lower()
+        inner = m.group(2)
+        return f"\n\n\\begin{{{env}}}\n{inner}\n\\end{{{env}}}\n\n"
+
+    html = re.sub(
+        r'class="[^"]*ltx_theorem[^"]*ltx_theorem_(\w+)"[^>]*>(.*?)</(?:div|section|figure)>',
+        _wrap_env,
+        html,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
+
+    # 3. Strip all remaining HTML tags
+    text = re.sub(r"<[^>]+>", " ", html)
+
+    # 4. Decode common HTML entities
+    for entity, char in [
+        ("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"),
+        ("&quot;", '"'), ("&#39;", "'"), ("&nbsp;", " "),
+    ]:
+        text = text.replace(entity, char)
+
+    # 5. Normalise whitespace
+    text = re.sub(r"[ \t]{3,}", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+
+    return text.strip() or None

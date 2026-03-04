@@ -22,10 +22,12 @@ class Settings(BaseSettings):
     # LLM provider selection — controls what registry.primary / registry.cheap resolve to.
     # Supported values: "claude" | "openai_compatible"
     # "openai_compatible" covers DeepSeek, OpenRouter, Gemini (via OpenAI endpoint), etc.
-    primary_provider: str = "claude"
-    primary_model: str = "claude-sonnet-4-6"
-    cheap_provider: str = "claude"
-    cheap_model: str = "claude-haiku-4-5-20251001"
+    primary_provider: str = "openai_compatible"
+    # Default to Perplexity Sonar via OpenRouter; override via env if desired.
+    # Use perplexity/sonar (OpenRouter id); sonar-small-chat is deprecated/unavailable.
+    primary_model: str = "perplexity/sonar"
+    cheap_provider: str = "openai_compatible"
+    cheap_model: str = "perplexity/sonar"
 
     # Anthropic (used when provider = "claude")
     anthropic_api_key: str = ""
@@ -40,7 +42,11 @@ class Settings(BaseSettings):
 
     # External APIs
     wolfram_app_id: str = ""
-    semantic_scholar_api_key: str = ""  # optional — raises rate limit without key
+    exa_api_key: str = ""
+
+    # Perplexity web-grounded reasoning fallback
+    perplexity_api_key: str = ""
+    perplexity_model: str = "sonar"
 
     # Lean 4
     lean_executable: str = "lean"       # must be on PATH

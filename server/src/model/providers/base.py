@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Iterator
 
 
 @dataclass
@@ -35,3 +36,18 @@ class LLMProvider(ABC):
             LLMResponse with content and token usage.
         """
         ...
+
+    def stream_complete(
+        self,
+        system: str,
+        messages: list[dict],
+        max_tokens: int = 4096,
+        temperature: float = 0.0,
+    ) -> Iterator[str]:
+        """Stream a completion as an iterator of text chunks.
+
+        Default implementation falls back to `complete()` and yields a single chunk.
+        Backends that support true streaming should override this method.
+        """
+        resp = self.complete(system=system, messages=messages, max_tokens=max_tokens, temperature=temperature)
+        yield resp.content

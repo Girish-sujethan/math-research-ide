@@ -16,11 +16,29 @@ Configuration in .env:
     CHEAP_MODEL=deepseek-chat
 """
 
+import json
+from typing import Iterator
+
 import httpx
 
 from src.model.providers.base import LLMProvider, LLMResponse
 
 _DEFAULT_TIMEOUT = 120.0  # seconds
+
+
+def _error_message_from_response(response: httpx.Response) -> str:
+    """Build a user-facing error from an API error response (e.g. OpenRouter 400)."""
+    try:
+        body = response.json()
+    except Exception:
+        body = None
+    if isinstance(body, dict):
+        err = body.get("error") or body.get("message")
+        if isinstance(err, dict) and err.get("message"):
+            return f"{response.status_code} {response.reason_phrase}: {err['message']}"
+        if isinstance(err, str):
+            return f"{response.status_code} {response.reason_phrase}: {err}"
+    return f"Client error '{response.status_code} {response.reason_phrase}' for url '{response.url}'"
 
 
 class OpenAICompatibleProvider(LLMProvider):
@@ -68,7 +86,8 @@ class OpenAICompatibleProvider(LLMProvider):
             f"{self._base_url}/chat/completions",
             json=payload,
         )
-        response.raise_for_status()
+        if not response.is_success:
+            raise ValueError(_error_message_from_response(response))
         data = response.json()
 
         choices = data.get("choices", [])
@@ -87,3 +106,53 @@ class OpenAICompatibleProvider(LLMProvider):
             input_tokens=usage.get("prompt_tokens", 0),
             output_tokens=usage.get("completion_tokens", 0),
         )
+
+    def stream_complete(
+        self,
+        system: str,
+        messages: list[dict],
+        max_tokens: int = 4096,
+        temperature: float = 0.0,
+    ) -> Iterator[str]:
+        """Stream a chat completion from the OpenAI-compatible endpoint.
+
+        Yields content deltas as they are received from the API.
+        """
+        full_messages = [{"role": "system", "content": system}, *messages]
+        payload = {
+            "model": self._model,
+            "messages": full_messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "stream": True,
+        }
+
+        client = self._get_client()
+
+        with client.stream(
+            "POST",
+            f"{self._base_url}/chat/completions",
+            json=payload,
+        ) as response:
+            if not response.is_success:
+                raise ValueError(_error_message_from_response(response))
+            for raw_line in response.iter_lines():
+                if not raw_line:
+                    continue
+                line = raw_line.strip() if isinstance(raw_line, str) else raw_line.decode("utf-8").strip()
+                if not line.startswith("data:"):
+                    continue
+                data_str = line[5:].strip()
+                if data_str == "[DONE]":
+                    break
+                try:
+                    obj = json.loads(data_str)
+                except json.JSONDecodeError:
+                    continue
+                choices = obj.get("choices") or []
+                if not choices:
+                    continue
+                delta = choices[0].get("delta") or {}
+                content_piece = delta.get("content")
+                if content_piece:
+                    yield content_piece

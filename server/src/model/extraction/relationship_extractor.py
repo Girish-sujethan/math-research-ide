@@ -24,6 +24,7 @@ VALID_RELATIONSHIP_TYPES = frozenset({
     "cited_by",
     "equivalent_to",
     "extends",
+    "related_to",
 })
 
 _SYSTEM_PROMPT = """\
@@ -36,12 +37,15 @@ For each relationship, output a JSON object with:
 - "source_concept_name": name of the source concept (exactly as given)
 - "target_concept_name": name of the target concept (exactly as given)
 - "relationship_type": one of: proves, depends_on, generalizes, is_special_case_of, \
-contradicts, cited_by, equivalent_to, extends
+contradicts, cited_by, equivalent_to, extends, related_to
 - "description": one sentence explaining the relationship
 
-Output ONLY a JSON array. If no relationships are apparent, output [].
-Only include relationships that are clearly supported by the mathematical statements provided.
-Do not infer speculative relationships.
+Use "related_to" when concepts are semantically or thematically related but do not fit \
+proves/depends_on/generalizes/etc. Use the more specific types when the relationship is clear.
+
+Output ONLY a JSON array. Include relationships that are clearly supported by the \
+mathematical statements or by strong semantic/keyword overlap. Do not leave out pairs \
+that were suggested as candidates if a relationship is plausible.
 """
 
 
@@ -57,12 +61,15 @@ class PendingRelationship:
 def extract_relationships(
     concepts: list[ExtractedConcept],
     provider: LLMProvider,
+    candidate_pairs: list[tuple[str, str]] | None = None,
 ) -> list[PendingRelationship]:
     """Extract relationships between a set of concepts.
 
     Args:
-        concepts: Concepts extracted from a paper (output of concept_extractor).
+        concepts: Concepts extracted from a paper (and any deduplicated from DB).
         provider: LLM backend to use.
+        candidate_pairs: Optional list of (source_name, target_name) pairs suggested by
+            semantic similarity or keyword overlap; the LLM will consider these explicitly.
 
     Returns:
         List of PendingRelationship with string concept names.
@@ -70,6 +77,8 @@ def extract_relationships(
     """
     if not concepts:
         return []
+
+    known_names = {c.name for c in concepts}
 
     # Build a compact concept listing for the prompt
     concept_lines = []
@@ -79,9 +88,36 @@ def extract_relationships(
         )
     concept_block = "\n".join(concept_lines)
 
+    # Filter candidate pairs to only include names we know
+    if candidate_pairs:
+        valid_pairs = [
+            (a, b) for a, b in candidate_pairs
+            if a in known_names and b in known_names and a != b
+        ]
+        # Deduplicate and limit size for prompt
+        seen = set()
+        unique_pairs = []
+        for a, b in valid_pairs:
+            key = (a, b) if a < b else (b, a)
+            if key not in seen and len(unique_pairs) < 150:
+                seen.add(key)
+                unique_pairs.append((a, b))
+    else:
+        unique_pairs = []
+
+    candidate_block = ""
+    if unique_pairs:
+        candidate_block = (
+            "\n\nThese concept pairs were identified as semantically similar or sharing important keywords. "
+            "Consider each for a relationship (proves, depends_on, related_to, etc.):\n"
+            + "\n".join(f"- {a} <-> {b}" for a, b in unique_pairs[:100])
+        )
+
     user_message = (
         f"Identify relationships between the following {len(concepts)} mathematical concepts:\n\n"
         f"{concept_block}"
+        f"{candidate_block}\n\n"
+        "Output a JSON array of relationships. Include any relationship that is supported by the statements or by the candidate pairs above."
     )
 
     try:

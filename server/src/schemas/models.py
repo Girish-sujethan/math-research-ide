@@ -6,9 +6,10 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 ConceptType = Literal[
-    "theorem", "definition", "lemma", "axiom", "conjecture", "corollary", "proposition"
+    "theorem", "definition", "lemma", "axiom", "conjecture", "corollary", "proposition",
+    "equation", "remark", "example", "formula",
 ]
-SourceType = Literal["arxiv", "scholar", "wolfram", "mathworld", "dlmf", "other"]
+SourceType = Literal["arxiv", "scholar", "wolfram", "mathworld", "dlmf", "other", "upload"]
 LeanStatus = Literal["unverified", "pending", "verified", "failed"]
 SympyStatus = Literal["unchecked", "passed", "failed"]
 RelationshipType = Literal[
