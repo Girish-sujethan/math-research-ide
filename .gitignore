@@ -17,6 +17,9 @@ Desktop.ini
 # Cursor local workspace files (safe to ignore)
 .cursor/
 
+# Claude Code local state
+.claude/
+
 # =========================
 # Logs / temp files
 # =========================

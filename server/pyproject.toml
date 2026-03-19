@@ -41,6 +41,7 @@ dependencies = [
     "matplotlib>=3.8",
     # Neural paper search
     "exa-py>=1.0",
+    "slowapi>=0.1.9",
 ]
 
 [dependency-groups]

@@ -53,5 +53,11 @@ class Settings(BaseSettings):
     lean_project_dir: str = str(SERVER_DIR / "lean_project")
     lean_timeout_seconds: int = 60
 
+    # Rate limiting
+    rate_limit: str = "30/minute"
+
+    # CORS — comma-separated allowed origins (use * for development only)
+    cors_origins: str = "*"
+
 
 settings = Settings()
