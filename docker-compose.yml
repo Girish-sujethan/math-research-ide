@@ -1,0 +1,35 @@
+services:
+  server:
+    build: ./server
+    ports:
+      - "8003:8000"
+    env_file:
+      - path: ./server/.env
+        required: false
+    environment:
+      - SQLITE_URL=sqlite:////data/heaven.db
+      - CHROMA_PERSIST_DIR=/data/chroma_data
+    volumes:
+      - heaven-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./client
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8003
+    ports:
+      - "3003:3000"
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  heaven-data:

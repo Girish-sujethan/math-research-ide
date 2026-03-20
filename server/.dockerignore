@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+*.db
+*.db-shm
+*.db-wal
+chroma_data/
+.lake/
+lake-packages/
+lean_packages/
+tests/
+.git/
